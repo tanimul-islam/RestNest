@@ -1,0 +1,22 @@
+model RentalRequest {
+  id             String              @id @default(uuid())
+  propertyId     String
+  tenantId       String
+  message        String?
+  moveInDate     DateTime?
+  durationMonths Int?
+  totalAmount    Decimal?            @db.Decimal(10, 2)
+  status         RentalRequestStatus @default(PENDING)
+  respondedAt    DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  property Property @relation(fields: [propertyId], references: [id])
+  tenant   User     @relation("TenantRentalRequests", fields: [tenantId], references: [id])
+  payment  Payment?
+  review   Review?
+
+  @@index([propertyId])
+  @@index([tenantId])
+  @@index([status])
+}

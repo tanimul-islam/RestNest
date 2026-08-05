@@ -1,6 +1,7 @@
 import express from "express";
 import cookieParser from "cookie-parser";
 import { authRoute } from "./modules/auth/auth.route";
+import globalErrorHandler from "./utils/globalErrorHandler";
 
 const app = express();
 
@@ -15,5 +16,5 @@ app.get("/", (req, res) => {
   });
 });
 app.use("/api/auth", authRoute);
-
+app.use(globalErrorHandler);
 export default app;

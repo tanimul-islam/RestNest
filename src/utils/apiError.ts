@@ -1,11 +1,15 @@
 class ApiError extends Error {
-  statusCode: number;
+  public readonly statusCode: number;
+  public readonly errorDetails?: unknown;
 
-  constructor(statusCode: number, message: string) {
+  constructor(statusCode: number, message: string, errorDetails?: unknown) {
     super(message);
-    this.name = "ApiError";
+
     this.statusCode = statusCode;
+    this.errorDetails = errorDetails;
+
     Object.setPrototypeOf(this, new.target.prototype);
+    Error.captureStackTrace(this, this.constructor);
   }
 }
 

@@ -7,15 +7,6 @@ import { jwtUtils } from "../../utils/jwt";
 import ApiError from "../../utils/apiError";
 import { LoginUserInput, RegisterUserInput } from "./auth.interface";
 
-type RefreshTokenPayload = {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  iat?: number;
-  exp?: number;
-};
-
 const registerUser = async (payload: RegisterUserInput) => {
   const { name, email, password, role } = payload;
 
@@ -24,11 +15,14 @@ const registerUser = async (payload: RegisterUserInput) => {
   });
 
   if (existingUser) {
-    throw new ApiError(409, "User with this email already exists");
+    throw new ApiError(httpStatus.CONFLICT, "User exist with this email");
   }
 
   if (!["TENANT", "LANDLORD"].includes(role)) {
-    throw new ApiError(400, "Role must be TENANT or LANDLORD");
+    throw new ApiError(
+      httpStatus.BAD_REQUEST,
+      "Role must be TENANT or LANDLORD",
+    );
   }
 
   const hashedPassword = await bcrypt.hash(
@@ -77,7 +71,7 @@ const loginUser = async (payload: LoginUserInput) => {
   const isPasswordMatched = await bcrypt.compare(password, user.password);
 
   if (!isPasswordMatched) {
-    throw new ApiError(401, "Invalid email or password");
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Invalid email or password");
   }
 
   const jwtPayload = {
@@ -112,14 +106,17 @@ const loginUser = async (payload: LoginUserInput) => {
   };
 };
 
-const generateRefreshToken = async (refreshToken: string) => {
+const generatehToken = async (refreshToken: string) => {
   const verifiedRefreshToken = jwtUtils.verifyToken(
     refreshToken,
     config.jwt_refresh_secret as string,
   );
 
   if (!verifiedRefreshToken.success) {
-    throw new Error(verifiedRefreshToken.error);
+    throw new ApiError(
+      httpStatus.UNAUTHORIZED,
+      String(verifiedRefreshToken.error),
+    );
   }
   const { id } = verifiedRefreshToken.data as JwtPayload;
 
@@ -136,7 +133,7 @@ const generateRefreshToken = async (refreshToken: string) => {
     );
   }
 
-  const JwtPayload = {
+  const jwtPayload = {
     id,
     name: user.name,
     email: user.email,
@@ -144,16 +141,45 @@ const generateRefreshToken = async (refreshToken: string) => {
   };
 
   const accessToken = jwtUtils.createToken(
-    JwtPayload,
+    jwtPayload,
     config.jwt_access_secret as string,
     config.jwt_access_expires_in as SignOptions,
   );
 
   return accessToken;
 };
+const getCurrentUser = async (userId: string) => {
+  const user = await prisma.user.findUnique({
+    where: {
+      id: userId,
+    },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      status: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
 
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, "User not found");
+  }
+
+  if (user.status === "BANNED") {
+    throw new ApiError(
+      httpStatus.FORBIDDEN,
+      "User is banned. Please contact support.",
+    );
+  }
+
+  return user;
+};
 export const AuthService = {
   registerUser,
   loginUser,
-  generateRefreshToken,
+  generatehToken,
+  getCurrentUser,
 };

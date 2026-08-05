@@ -1,5 +1,6 @@
-import { ErrorRequestHandler, NextFunction, Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { JwtPayload } from "jsonwebtoken";
+import httpStatus from "http-status";
 import { UserRole } from "../../generated/prisma/enums";
 import config from "../config";
 import { prisma } from "../config/prisma";
@@ -16,8 +17,6 @@ type AuthRequest = Request & {
   };
 };
 
-// auth(Role.ADMIN, Role.USER, Role.Author)
-// auth() => ...requiredRoles => [Role.ADMIN, Role.USER, Role.AUTHOR]
 export const auth = (...requiredRoles: UserRole[]) => {
   return catchAsync(
     async (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -28,7 +27,8 @@ export const auth = (...requiredRoles: UserRole[]) => {
           : req.headers.authorization;
 
       if (!token) {
-        throw new Error(
+        throw new ApiError(
+          httpStatus.UNAUTHORIZED,
           "You are not logged in. Please log in to access this resource.",
         );
       }
@@ -42,10 +42,11 @@ export const auth = (...requiredRoles: UserRole[]) => {
         throw new Error(verifiedToken.error);
       }
 
-      const { email, name, id, role } = verifiedToken.data as JwtPayload;
+      const { id, role } = verifiedToken.data as JwtPayload;
 
       if (requiredRoles.length && !requiredRoles.includes(role)) {
-        throw new Error(
+        throw new ApiError(
+          httpStatus.FORBIDDEN,
           "Forbidden. You don't have permission to access this resource.",
         );
       }
@@ -53,45 +54,31 @@ export const auth = (...requiredRoles: UserRole[]) => {
       const user = await prisma.user.findUnique({
         where: {
           id,
-          email,
-          name,
-          role,
         },
       });
 
       if (!user) {
-        throw new Error("User not found. Please log in again.");
+        throw new ApiError(
+          httpStatus.UNAUTHORIZED,
+          "User not found. Please log in again.",
+        );
       }
 
       if (user.status === "BANNED") {
-        throw new Error(
+        throw new ApiError(
+          httpStatus.FORBIDDEN,
           "Your account has been blocked. Please contact support.",
         );
       }
 
       req.user = {
-        email,
-        name,
-        id,
-        role,
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
       };
 
       next();
     },
   );
-};
-
-export const handleAuthError: ErrorRequestHandler = (
-  error: unknown,
-  _req,
-  res,
-  _next,
-) => {
-  const isApiError = error instanceof ApiError;
-  const statusCode = isApiError ? error.statusCode : 500;
-
-  res.status(statusCode).json({
-    success: false,
-    message: isApiError ? error.message : "Internal server error",
-  });
 };

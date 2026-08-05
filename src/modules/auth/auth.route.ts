@@ -1,9 +1,12 @@
 import { Router } from "express";
-import { authController } from "./auth.controller";
+import { AuthController } from "./auth.controller";
+import { handleAuthError, requireAuth } from "./auth.middleware";
 
 const router = Router();
 
-router.post("/signup", authController.signUpUser);
-router.post("/login", authController.logInUser);
-router.post("/refresh-token", authController.refreshToken);
+router.post("/register", AuthController.registerUser);
+router.post("/login", AuthController.logInUser);
+
+router.use(handleAuthError);
+
 export const authRoute = router;

@@ -1,51 +1,84 @@
-import type { ErrorRequestHandler, RequestHandler } from "express";
-import type { JwtPayload } from "jsonwebtoken";
-import config from "../../config";
-import ApiError from "../../utils/apiError";
-import { jwtUtils } from "../../utils/jwt";
+import { ErrorRequestHandler, NextFunction, Request, Response } from "express";
+import { JwtPayload } from "jsonwebtoken";
+import { UserRole } from "../../generated/prisma/enums";
+import config from "../config";
+import { prisma } from "../config/prisma";
+import catchAsync from "../utils/asyncHandler";
+import { jwtUtils } from "../utils/jwt";
+import ApiError from "../utils/apiError";
 
-type AuthTokenPayload = JwtPayload & {
-  id: string;
-  name: string;
-  email: string;
-  role: "TENANT" | "LANDLORD" | "ADMIN";
-};
-
-const isAuthTokenPayload = (value: unknown): value is AuthTokenPayload => {
-  if (!value || typeof value !== "object") return false;
-  const payload = value as Partial<AuthTokenPayload>;
-  return (
-    typeof payload.id === "string" &&
-    typeof payload.name === "string" &&
-    typeof payload.email === "string" &&
-    (payload.role === "TENANT" ||
-      payload.role === "LANDLORD" ||
-      payload.role === "ADMIN")
-  );
-};
-
-export const requireAuth: RequestHandler = (req, _res, next) => {
-  const [scheme, token] = req.headers.authorization?.split(" ") ?? [];
-
-  if (scheme?.toLowerCase() !== "bearer" || !token) {
-    return next(new ApiError(401, "Authentication is required"));
-  }
-  if (!config.jwt_access_secret) {
-    return next(new ApiError(500, "JWT_ACCESS_SECRET is not configured"));
-  }
-
-  const verification = jwtUtils.verifyToken(token, config.jwt_access_secret);
-  if (!verification.success || !isAuthTokenPayload(verification.data)) {
-    return next(new ApiError(401, "Invalid or expired access token"));
-  }
-
-  req.user = {
-    id: verification.data.id,
-    name: verification.data.name,
-    email: verification.data.email,
-    role: verification.data.role,
+type AuthRequest = Request & {
+  user?: {
+    email: string;
+    name: string;
+    id: string;
+    role: UserRole;
   };
-  next();
+};
+
+// auth(Role.ADMIN, Role.USER, Role.Author)
+// auth() => ...requiredRoles => [Role.ADMIN, Role.USER, Role.AUTHOR]
+export const auth = (...requiredRoles: UserRole[]) => {
+  return catchAsync(
+    async (req: AuthRequest, res: Response, next: NextFunction) => {
+      const token = req.cookies.accessToken
+        ? req.cookies.accessToken
+        : req.headers.authorization?.startsWith("Bearer ")
+          ? req.headers.authorization?.split(" ")[1]
+          : req.headers.authorization;
+
+      if (!token) {
+        throw new Error(
+          "You are not logged in. Please log in to access this resource.",
+        );
+      }
+
+      const verifiedToken = jwtUtils.verifyToken(
+        token,
+        config.jwt_access_secret as string,
+      );
+
+      if (!verifiedToken.success) {
+        throw new Error(verifiedToken.error);
+      }
+
+      const { email, name, id, role } = verifiedToken.data as JwtPayload;
+
+      if (requiredRoles.length && !requiredRoles.includes(role)) {
+        throw new Error(
+          "Forbidden. You don't have permission to access this resource.",
+        );
+      }
+
+      const user = await prisma.user.findUnique({
+        where: {
+          id,
+          email,
+          name,
+          role,
+        },
+      });
+
+      if (!user) {
+        throw new Error("User not found. Please log in again.");
+      }
+
+      if (user.status === "BANNED") {
+        throw new Error(
+          "Your account has been blocked. Please contact support.",
+        );
+      }
+
+      req.user = {
+        email,
+        name,
+        id,
+        role,
+      };
+
+      next();
+    },
+  );
 };
 
 export const handleAuthError: ErrorRequestHandler = (

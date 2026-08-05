@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
-import { SignOptions } from "jsonwebtoken";
-
+import { JwtPayload, SignOptions } from "jsonwebtoken";
+import httpStatus from "http-status";
 import { prisma } from "../../config/prisma";
 import config from "../../config";
 import { jwtUtils } from "../../utils/jwt";
@@ -63,16 +63,14 @@ const loginUser = async (payload: LoginUserInput) => {
     where: { email },
   });
 
-  // Use the same message for invalid email and password.
-  // This avoids revealing whether an email exists.
   if (!user) {
-    throw new ApiError(401, "Invalid email or password");
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Invalid Password or Email!");
   }
 
   if (user.status === "BANNED") {
     throw new ApiError(
-      403,
-      "Your account has been banned. Please contact support.",
+      httpStatus.FORBIDDEN,
+      "User is Banned, contact support!",
     );
   }
 
@@ -114,55 +112,44 @@ const loginUser = async (payload: LoginUserInput) => {
   };
 };
 
-const generateRefreshToken = async (token: string) => {
-  if (!token) {
-    throw new ApiError(401, "Refresh token is required");
+const generateRefreshToken = async (refreshToken: string) => {
+  const verifiedRefreshToken = jwtUtils.verifyToken(
+    refreshToken,
+    config.jwt_refresh_secret as string,
+  );
+
+  if (!verifiedRefreshToken.success) {
+    throw new Error(verifiedRefreshToken.error);
   }
+  const { id } = verifiedRefreshToken.data as JwtPayload;
 
-  let decodedToken: RefreshTokenPayload;
-
-  try {
-    decodedToken = jwtUtils.verifyToken(
-      token,
-      config.jwt_refresh_secret as string,
-    ) as RefreshTokenPayload;
-  } catch {
-    throw new ApiError(401, "Invalid or expired refresh token");
-  }
-
-  const user = await prisma.user.findUnique({
+  const user = await prisma.user.findUniqueOrThrow({
     where: {
-      id: decodedToken.id,
+      id,
     },
   });
 
-  if (!user) {
-    throw new ApiError(404, "User not found");
-  }
-
   if (user.status === "BANNED") {
     throw new ApiError(
-      403,
-      "Your account has been banned. Please contact support.",
+      httpStatus.FORBIDDEN,
+      "User is Banned, contact support!",
     );
   }
 
-  const jwtPayload = {
-    id: user.id,
+  const JwtPayload = {
+    id,
     name: user.name,
     email: user.email,
     role: user.role,
   };
 
   const accessToken = jwtUtils.createToken(
-    jwtPayload,
+    JwtPayload,
     config.jwt_access_secret as string,
     config.jwt_access_expires_in as SignOptions,
   );
 
-  return {
-    accessToken,
-  };
+  return accessToken;
 };
 
 export const AuthService = {

@@ -18,8 +18,8 @@ app.get("/", (req, res) => {
   });
 });
 app.use("/api/auth", authRoute);
-app.use("/api/landlord/property", PropertyRoute);
-app.use("/api/admin/category", categoryRoute);
+app.use("/api/property", PropertyRoute);
+app.use("/api/category", categoryRoute);
 
 app.use((req, res) => {
   res.status(404).json({

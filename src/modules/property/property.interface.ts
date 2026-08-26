@@ -9,3 +9,10 @@ export interface CreatePropertyInput {
   bathrooms: number;
   categoryId: string;
 }
+
+export interface PropertyFilters {
+  location?: string;
+  minPrice?: string;
+  maxPrice?: string;
+  type?: string;
+}

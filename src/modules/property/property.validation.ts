@@ -54,6 +54,36 @@ const createPropertyValidationSchema = z.object({
   }),
 });
 
+const getPropertyValidationSchema = z.object({
+  query: z
+    .object({
+      location: z.string().optional(),
+
+      minPrice: z.coerce
+        .number()
+        .positive("Minimum price can't be less than 0")
+        .optional(),
+
+      maxPrice: z.coerce
+        .number()
+        .positive("maximum price can't be less than 0")
+        .optional(),
+      type: z.string().optional(),
+    })
+    .refine(
+      (data) => {
+        if (data.minPrice !== undefined && data.maxPrice !== undefined) {
+          return data.minPrice <= data.maxPrice;
+        }
+        return true;
+      },
+      {
+        message: "Minimum price can't be greater than maximum price",
+      },
+    ),
+});
+
 export const PropertyValidation = {
   createPropertyValidationSchema,
+  getPropertyValidationSchema,
 };

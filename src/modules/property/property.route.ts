@@ -13,4 +13,10 @@ router.post(
   PropertyController.createProperty,
 );
 
+router.get(
+  "/",
+  validateRequest(PropertyValidation.getPropertyValidationSchema),
+  PropertyController.getProperties,
+);
+
 export const PropertyRoute = router;

@@ -1,4 +1,3 @@
-import { gte } from "zod";
 import { prisma } from "../../config/prisma";
 import ApiError from "../../utils/apiError";
 import { CreatePropertyInput, PropertyFilters } from "./property.interface";
@@ -15,7 +14,7 @@ const createProperty = async (
   });
 
   if (!category) {
-    throw new ApiError(httpStatus.NOT_FOUND, "Category Not FOund", {
+    throw new ApiError(httpStatus.NOT_FOUND, "Category not found", {
       field: "categoryId",
     });
   }
@@ -31,7 +30,7 @@ const createProperty = async (
 };
 
 const getProperties = async (filters: PropertyFilters) => {
-  const { location, minPrice, maxPrice, type } = filters;
+  const { location, minPrice, maxPrice, type } = filters || {};
 
   const properties = await prisma.property.findMany({
     where: {
@@ -73,7 +72,11 @@ const getProperties = async (filters: PropertyFilters) => {
       }),
     },
 
-    include: {
+    select: {
+      id: true,
+      title: true,
+      city: true,
+      price: true,
       category: {
         select: {
           id: true,
@@ -88,6 +91,7 @@ const getProperties = async (filters: PropertyFilters) => {
         },
       },
     },
+
     orderBy: {
       createdAt: "desc",
     },

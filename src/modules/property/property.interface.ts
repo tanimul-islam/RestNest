@@ -1,7 +1,8 @@
 export interface CreatePropertyInput {
-  title: String;
-  description: String;
-  rent: number;
+  title: string;
+  description: string;
+  price: number;
+  area: number;
   address: string;
   city: string;
   bedrooms: number;

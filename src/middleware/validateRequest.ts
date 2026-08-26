@@ -10,6 +10,7 @@ const validateRequest = (schema: ZodObject) => {
       query: req.query,
       params: req.params,
     });
+
     next();
   });
 };

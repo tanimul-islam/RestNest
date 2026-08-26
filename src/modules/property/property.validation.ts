@@ -22,11 +22,17 @@ const createPropertyValidationSchema = z.object({
       error: "City is required",
     }),
 
-    rent: z
+    price: z
       .number({
         error: "Rent must be a number",
       })
       .positive("Rent must be greater than 0"),
+
+    area: z
+      .number({
+        error: "Area  must be a number",
+      })
+      .positive("Area must be greater than 0"),
 
     bedrooms: z
       .number({

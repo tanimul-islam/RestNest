@@ -7,6 +7,7 @@ import {
   PropertyRoute,
 } from "./modules/property/property.route";
 import { categoryRoute } from "./modules/category/category.route";
+import { RentalRouter } from "./modules/rentals/rentals.route";
 
 const app = express();
 
@@ -24,6 +25,7 @@ app.use("/api/auth", authRoute);
 app.use("/api/properties", PropertyRoute);
 app.use("/api/categories", categoryRoute);
 app.use("/api/landlord/properties", LandlordPropertyRoute);
+app.use("/api/rentals", RentalRouter);
 
 app.use((req, res) => {
   res.status(404).json({

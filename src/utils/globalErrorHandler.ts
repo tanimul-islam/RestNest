@@ -10,6 +10,7 @@ const globalErrorHandler: ErrorRequestHandler = (error, req, res, _next) => {
     path: req.originalUrl,
     method: req.method,
   };
+  console.error("GLOBAL ERROR:", error);
   if (error instanceof ZodError) {
     statusCode = httpStatus.BAD_REQUEST;
     message = "Validation failed";

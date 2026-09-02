@@ -20,6 +20,13 @@ const createRentalRequestSchema = z.object({
   }),
 });
 
+const getRequestDetailsSchema = z.object({
+  params: z.object({
+    id: z.uuid("Invalid Rental Request Id"),
+  }),
+});
+
 export const RentalValidation = {
   createRentalRequestSchema,
+  getRequestDetailsSchema,
 };

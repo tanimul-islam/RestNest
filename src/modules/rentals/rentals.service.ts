@@ -16,7 +16,6 @@ const createRequest = async (tenantId: string, payload: TRentalRequest) => {
       id: payload.propertyId,
     },
   });
-
   if (!property) {
     throw new ApiError(httpStatus.NOT_FOUND, "Property not found", {
       propertyId: payload.propertyId,
@@ -58,6 +57,46 @@ const createRequest = async (tenantId: string, payload: TRentalRequest) => {
   return result;
 };
 
+const getMyRentalRequests = async (tenantId: string) => {
+  const result = await prisma.rentalRequest.findMany({
+    where: {
+      tenantId,
+    },
+
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+
+  return result;
+};
+
+const rentalRequestDetailsById = async (
+  requestId: string,
+  tenantId: string,
+) => {
+  const result = await prisma.rentalRequest.findFirst({
+    where: {
+      id: requestId,
+      tenantId,
+    },
+    include: {
+      property: true,
+      payment: true,
+      review: true,
+    },
+  });
+
+  if (!result) {
+    throw new ApiError(httpStatus.NOT_FOUND, "Rental request not found", {
+      requestId,
+    });
+  }
+  return result;
+};
+
 export const RentalService = {
   createRequest,
+  getMyRentalRequests,
+  rentalRequestDetailsById,
 };

@@ -91,7 +91,7 @@ const getPropertyByIdValidationSchema = z.object({
 
 const updatePropertyValidationSchema = z.object({
   params: z.object({
-    id: z.string().uuid("Invalid property ID"),
+    id: z.uuid("Invalid property ID"),
   }),
 
   body: z.object({
@@ -118,13 +118,13 @@ const updatePropertyValidationSchema = z.object({
       .min(1, "Bathrooms must be at least 1")
       .optional(),
 
-    categoryId: z.string().uuid("Invalid category ID").optional(),
+    categoryId: z.uuid("Invalid category ID").optional(),
   }),
 });
 
 const deletePropertyValidationSchema = z.object({
   params: z.object({
-    id: z.string().uuid("Invalid property ID"),
+    id: z.uuid("Invalid property ID"),
   }),
 });
 

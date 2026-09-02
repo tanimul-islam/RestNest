@@ -2,7 +2,10 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import { authRoute } from "./modules/auth/auth.route";
 import globalErrorHandler from "./utils/globalErrorHandler";
-import { PropertyRoute } from "./modules/property/property.route";
+import {
+  LandlordPropertyRoute,
+  PropertyRoute,
+} from "./modules/property/property.route";
 import { categoryRoute } from "./modules/category/category.route";
 
 const app = express();
@@ -18,8 +21,9 @@ app.get("/", (req, res) => {
   });
 });
 app.use("/api/auth", authRoute);
-app.use("/api/property", PropertyRoute);
-app.use("/api/category", categoryRoute);
+app.use("/api/properties", PropertyRoute);
+app.use("/api/categories", categoryRoute);
+app.use("/api/landlord/properties", LandlordPropertyRoute);
 
 app.use((req, res) => {
   res.status(404).json({

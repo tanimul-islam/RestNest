@@ -100,7 +100,118 @@ const getProperties = async (filters: PropertyFilters) => {
   return properties;
 };
 
+const getPropertyById = async (id: string) => {
+  const property = await prisma.property.findUnique({
+    where: {
+      id,
+    },
+    include: {
+      category: {
+        select: {
+          id: true,
+          name: true,
+          description: true,
+        },
+      },
+      landlord: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
+  });
+
+  if (!property) {
+    throw new ApiError(httpStatus.NOT_FOUND, "Property not found", {
+      propertyId: id,
+    });
+  }
+
+  return property;
+};
+
+const updateProperty = async (
+  propertyId: string,
+  landlordId: string,
+  payload: Partial<CreatePropertyInput>,
+) => {
+  const property = await prisma.property.findUnique({
+    where: {
+      id: propertyId,
+    },
+  });
+
+  if (!property) {
+    throw new ApiError(httpStatus.NOT_FOUND, "Property not found", {
+      propertyId,
+    });
+  }
+
+  if (property.landlordId !== landlordId) {
+    throw new ApiError(
+      httpStatus.FORBIDDEN,
+      "You are not allowed to update this property",
+    );
+  }
+
+  if (payload.categoryId) {
+    const category = await prisma.category.findUnique({
+      where: {
+        id: payload.categoryId,
+      },
+    });
+
+    if (!category) {
+      throw new ApiError(httpStatus.NOT_FOUND, "Category not found", {
+        field: "categoryId",
+      });
+    }
+  }
+
+  const updatedProperty = await prisma.property.update({
+    where: {
+      id: propertyId,
+    },
+    data: payload,
+  });
+
+  return updatedProperty;
+};
+
+const deleteProperty = async (propertyId: string, landlordId: string) => {
+  const property = await prisma.property.findUnique({
+    where: {
+      id: propertyId,
+    },
+  });
+
+  if (!property) {
+    throw new ApiError(httpStatus.NOT_FOUND, "Property not found", {
+      propertyId,
+    });
+  }
+
+  if (property.landlordId !== landlordId) {
+    throw new ApiError(
+      httpStatus.FORBIDDEN,
+      "You are not allowed to update this property",
+    );
+  }
+
+  await prisma.property.delete({
+    where: {
+      id: propertyId,
+    },
+  });
+
+  return null;
+};
+
 export const PropertyService = {
   createProperty,
   getProperties,
+  getPropertyById,
+  updateProperty,
+  deleteProperty,
 };
